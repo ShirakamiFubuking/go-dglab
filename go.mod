@@ -1,4 +1,4 @@
-module godglab
+module github.com/ShirakamiFubuking/go-dglab
 
 go 1.22
 
