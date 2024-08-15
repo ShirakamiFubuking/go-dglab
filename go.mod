@@ -1,4 +1,4 @@
-module dglab
+module godglab
 
 go 1.22
 

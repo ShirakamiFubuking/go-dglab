@@ -1,4 +1,4 @@
-package dglab
+package godglab
 
 import (
 	"encoding/hex"

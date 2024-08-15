@@ -1,4 +1,4 @@
-package dglab
+package godglab
 
 var DefaultWaves map[string]WavePatten
 
