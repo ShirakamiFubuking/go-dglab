@@ -19,36 +19,45 @@ import (
 )
 
 func main() {
-	url := dglab.WaitConnect("192.168.137.1", 8888, "", func(c *dglab.Coyote) {
+	// IP是APP可直接訪問之IP
+	url := dglab.WaitConnect("192.168.137.1", 8888, "", func(c *dglab.Coyote) { // id留空會自動生成uuid
 		// 註冊事件監聽
-		c.Handle(func(pa, pb, la, lb int) {
+		c.Handle(func(powerA, powerB, limitA, limitB int) {
 			// APP反饋強度設定
-			log.Printf("當前強度/上限A=%d/%d, B=%d/%d\n", pa, la, pb, lb)
+			log.Printf("當前強度/上限A=%d/%d, B=%d/%d\n", powerA, powerB, limitA, limitB)
 			// 設置強度為上限
-			if pa != la {
-				c.SetPower(dglab.CHANNEL_A, la)
+			if powerA != limitA {
+				c.SetPower(dglab.CHANNEL_A, limitA)
 			}
-			if pb != lb {
-				c.SetPower(dglab.CHANNEL_B, lb)
+			if powerB != limitB {
+				c.SetPower(dglab.CHANNEL_B, limitB)
 			}
 		}, func(button int) {
 			// app按鍵反饋
 		})
+		// 計時10秒
+		stop := false
+		go func() {
+			<-time.After(10 * time.Second)
+			stop = true
+		}()
 		// A通道
 		go func() {
 			wave := dglab.DefaultWaves["呼吸"]
-			for {
+			for !stop {
 				c.SendWave(dglab.CHANNEL_A, wave)
-				<-time.After(wave.Duration())
+				<-time.After(wave.Duration()) // 可以略少於波形時間
 			}
+			c.Clear(dglab.CHANNEL_A) // 觸發停止事件時清空queue
 		}()
 		// B通道
 		go func() {
 			wave := dglab.DefaultWaves["快速按捏"]
-			for {
+			for !stop {
 				c.SendWave(dglab.CHANNEL_B, wave)
-				<-time.After(wave.Duration())
+				<-time.After(wave.Duration() - (5 * time.Millisecond)) // 可以略少於波形時間
 			}
+			c.Clear(dglab.CHANNEL_B) // 觸發停止事件時清空queue
 		}()
 	})
 	// 產生QRCode
