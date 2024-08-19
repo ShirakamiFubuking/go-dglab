@@ -1,6 +1,8 @@
 package godglab
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -141,8 +143,8 @@ func (c *Coyote) Handle(handleStrength func(powerA int, powerB int, limitA int, 
 
 // 波形操作
 // channel: 大寫A或B
-func (c *Coyote) SendWave(channel int, w Wave) {
-	c.sendWave(channel, w)
+func (c *Coyote) SendWave(channel int, w Wave) error {
+	return c.sendWave(channel, w)
 }
 
 // 強度操作
@@ -172,7 +174,7 @@ func parseStrength(input string) (int, int, int, int) {
 	// 提取字符串中的所有数字
 	matches := re.FindAllString(input, -1)
 	if len(matches) != 4 {
-		fmt.Println("Error: Expected exactly 4 numbers in the input string")
+		log.Println("Error: Expected exactly 4 numbers in the input string")
 		return 0, 0, 0, 0
 	}
 
@@ -190,15 +192,22 @@ func connectURL(addr, clientID string) string {
 }
 
 func (c *Coyote) sendMessage(msg *Message) error {
+	jsonData, err := json.Marshal(*msg)
+	if err != nil {
+		return err
+	}
+	if l := len(jsonData); l >= 1950 {
+		return errors.New("json length must less than 1950")
+	}
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	return c.ws.WriteJSON(*msg)
+	return c.ws.WriteMessage(websocket.TextMessage, jsonData)
 }
 
-func (c *Coyote) sendWave(channel int, w Wave) {
+func (c *Coyote) sendWave(channel int, w Wave) error {
 	pulses := w.GetPulses()
 	m := c.newMessageWave(channel, pulses)
-	c.sendMessage(m)
+	return c.sendMessage(m)
 }
 
 func (c *Coyote) newMessageWave(channel int, ps []Pulse) *Message {
