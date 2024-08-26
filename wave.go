@@ -52,8 +52,8 @@ func (w *WavePatten) Scale(s float32) *WavePatten {
 	newWave := &WavePatten{
 		Data: make([]Pulse, len(w.Data)),
 	}
-	for _, p := range w.Data {
-		newWave.Data = append(newWave.Data, *p.Scale(s))
+	for i, p := range w.Data {
+		newWave.Data[i] = *p.Scale(s)
 	}
 	return newWave
 }
