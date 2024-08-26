@@ -1,6 +1,7 @@
 package godglab
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -44,7 +45,7 @@ type Message struct {
 }
 
 // addr ip:port
-func WaitConnect(ip string, port int, id string, onConnect func(c *Coyote)) string {
+func WaitConnect(ip string, port int, id string, onConnect func(ctx context.Context, c *Coyote)) string {
 	// t, _ := uuid.Parse("02e5fed7-d088-4a49-97c9-c1c238476907")
 	// clientID := t.String()
 	clientID := id
@@ -84,27 +85,32 @@ func WaitConnect(ip string, port int, id string, onConnect func(c *Coyote)) stri
 			Msg:      "200",
 		})
 		// 綁定成功
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		c := &Coyote{
 			ws:     ws,
 			client: clientID,
 			target: targetID,
 		}
-		onConnect(c)
+		onConnect(ctx, c)
 		// 心跳
-		go func() {
-			ticker := time.NewTicker(1 * time.Minute)
-			defer ticker.Stop()
+		go func(ctx context.Context) {
 			for {
-				<-ticker.C
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(1 * time.Minute):
+				}
 				if err := c.sendMessage(&Message{
 					Type:     "msg",
 					ClientID: c.client,
 					TargetID: c.target,
 					Msg:      "heartbeat"}); err != nil {
+					log.Printf("heartbeat error(must not happen?) %v", err)
 					break
 				}
 			}
-		}()
+		}(ctx)
 		for {
 			var msg Message
 			err := ws.ReadJSON(&msg)
